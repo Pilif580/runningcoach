@@ -1,6 +1,11 @@
-import { Text, View } from "react-native";
+import { View, Text } from "react-native";
+import { Link } from "expo-router";
+
 export default function Home() {
-  return <View style={{ flex:1, justifyContent:"center", alignItems:"center", backgroundColor:"#0B0B0C" }}>
-    <Text style={{ color:"#fff" }}>Pace Plan Pro</Text>
-  </View>;
+  return (
+    <View className="flex-1 bg-bg items-center justify-center">
+      <Text className="text-text text-xl">Pace Plan Pro</Text>
+      <Link href="/plan"><Text className="text-primary mt-4">Open Plan</Text></Link>
+    </View>
+  );
 }
