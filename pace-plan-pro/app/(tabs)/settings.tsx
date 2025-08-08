@@ -1,5 +1,5 @@
 import { View, Text, Pressable, ScrollView } from "react-native";
-import { tokens } from "../../../src/theme/tokens";
+import { tokens } from "../../src/theme/tokens";
 
 export default function Settings() {
   const settingsOptions = [
@@ -11,7 +11,7 @@ export default function Settings() {
   ];
 
   return (
-    <View className="flex-1" style={{ backgroundColor: tokens.bg, padding: 16 }}>
+    <View style={{ flex: 1, backgroundColor: tokens.bg, padding: 16 }}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {settingsOptions.map((option, index) => (
           <Pressable
@@ -24,8 +24,8 @@ export default function Settings() {
               marginBottom: 12,
             }}
           >
-            <View className="flex-row justify-between items-center">
-              <View className="flex-1">
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <View style={{ flex: 1 }}>
                 <Text style={{ color: tokens.text, fontSize: 16, fontWeight: "600", marginBottom: 4 }}>
                   {option.title}
                 </Text>
@@ -41,4 +41,3 @@ export default function Settings() {
     </View>
   );
 }
-

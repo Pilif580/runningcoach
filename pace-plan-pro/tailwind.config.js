@@ -3,9 +3,7 @@ module.exports = {
   content: [
     "./app/**/*.{js,jsx,ts,tsx}",
     "./src/**/*.{js,jsx,ts,tsx}",
-    "./components/**/*.{js,jsx,ts,tsx}",
   ],
-  presets: [require("nativewind/preset")],
   theme: {
     extend: {
       colors: {
@@ -15,10 +13,6 @@ module.exports = {
         primary: "#39FF14",
         text: "#FFFFFF",
         weak: "#B3B3B3",
-      },
-      borderRadius: {
-        xl: "24px",
-        md: "16px",
       },
     },
   },

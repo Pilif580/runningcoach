@@ -2,12 +2,14 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
+import 'react-native-reanimated';
+
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       {/* Root view using Tailwind theme colors */}
-      <View className="flex-1 bg-bg">
+      <View style={{ flex: 1, backgroundColor: '#0B0B0C' }}>
         <StatusBar style="light" />
         <Stack
           screenOptions={{

@@ -10,7 +10,7 @@ type CustomRunType = {
   intensity: number;
   pace_percentage: number;
   structure?: string;
-  created_at: string;
+  created_at?: string;
 };
 
 type NewRunType = {
@@ -37,10 +37,28 @@ export default function RunTypes() {
 
   const fetchRunTypes = async () => {
     try {
-      const { data, error } = await supabase
+      // First try with created_at ordering
+      let data: CustomRunType[] | null = null;
+      let error: any = null;
+      
+      const result = await supabase
         .from("custom_run_types")
-        .select("*")
+        .select("id, name, intensity, pace_percentage, structure, created_at")
         .order("created_at", { ascending: false });
+      
+      data = result.data as CustomRunType[];
+      error = result.error;
+
+      // If created_at column doesn't exist, retry without ordering
+      if (error && error.code === "42703") {
+        const fallbackResult = await supabase
+          .from("custom_run_types")
+          .select("id, name, intensity, pace_percentage, structure")
+          .order("name", { ascending: true });
+        
+        data = fallbackResult.data as CustomRunType[];
+        error = fallbackResult.error;
+      }
 
       if (error) throw error;
       setRunTypes(data || []);
@@ -126,8 +144,8 @@ export default function RunTypes() {
 
   const renderRunType = ({ item }: { item: CustomRunType }) => (
     <View style={{ backgroundColor: tokens.card, padding: 16, borderRadius: tokens.radius.md, marginBottom: 12 }}>
-      <View className="flex-row justify-between items-start">
-        <View className="flex-1">
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <View style={{ flex: 1 }}>
           <Text style={{ color: tokens.text, fontSize: 18, fontWeight: "600", marginBottom: 4 }}>
             {item.name}
           </Text>
@@ -154,10 +172,10 @@ export default function RunTypes() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: tokens.bg }}>
+    <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       {/* Header */}
       <View style={{ padding: 16, paddingTop: 20 }}>
-        <View className="mb-6">
+        <View style={{ marginBottom: 24 }}>
           <Text style={{ color: tokens.text, fontSize: 24, fontWeight: "600", textAlign: "center" }}>
             Run Types
           </Text>
@@ -165,7 +183,7 @@ export default function RunTypes() {
       </View>
 
       {/* Run Types List */}
-      <View className="flex-1" style={{ paddingHorizontal: 16 }}>
+      <View style={{ flex: 1, paddingHorizontal: 16 }}>
         {loading ? (
           <Text style={{ color: tokens.textWeak, textAlign: "center", marginTop: 40 }}>
             Loading run types...
@@ -212,10 +230,10 @@ export default function RunTypes() {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1" style={{ backgroundColor: tokens.bg, padding: 16 }}>
+        <View style={{ flex: 1, backgroundColor: tokens.bg, padding: 16 }}>
           {/* Modal Header */}
           <View style={{ paddingTop: 20, marginBottom: 30 }}>
-            <View className="flex-row items-center justify-between">
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
               <Pressable onPress={() => setIsModalVisible(false)}>
                 <Text style={{ color: tokens.primary, fontSize: 16 }}>Cancel</Text>
               </Pressable>

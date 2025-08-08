@@ -2,7 +2,7 @@ import { View, Text, FlatList, Pressable, Modal, ScrollView } from "react-native
 import { useState } from "react";
 import { Link, router } from "expo-router";
 import { tokens } from "../../src/theme/tokens";
-import { supabase } from "../../src/data/supabase";
+import { createPlanFromTemplate } from "../../src/data/planService";
 import dayjs from "dayjs";
 
 type PlanTemplate = {
@@ -71,39 +71,9 @@ const templates: PlanTemplate[] = [
 
 async function applyTemplate(template: PlanTemplate) {
   try {
-    // Create new plan
-    const { data: plan, error: planError } = await supabase
-      .from("plans")
-      .insert({
-        athlete_id: "placeholder_athlete_123",
-        start_date: dayjs().startOf("week").toISOString(),
-        coach_note: `Applied template: ${template.title}`
-      })
-      .select("id")
-      .single();
-
-    if (planError) throw planError;
-
-    // Generate plan_days for the week
-    const startOfWeek = dayjs().startOf("week");
-    const daysToInsert = template.planDays.map((day) => {
-      const date = startOfWeek.add(day.dayOfWeek, "day");
-      return {
-        plan_id: plan.id,
-        date: date.toISOString(),
-        type_name: day.type_name,
-        target_distance_km: day.target_distance_km
-      };
-    });
-
-    const { error: daysError } = await supabase
-      .from("plan_days")
-      .insert(daysToInsert);
-
-    if (daysError) throw daysError;
-
+    await createPlanFromTemplate(template.id, template.planDays);
     console.log("Template applied successfully");
-    router.push("/plan");
+    router.push("/(tabs)/plan");
   } catch (error) {
     console.error("Error applying template:", error);
   }
@@ -115,7 +85,7 @@ export default function Library() {
   const renderTemplate = ({ item }: { item: PlanTemplate }) => (
     <Pressable
       onPress={() => setSelectedTemplate(item)}
-      className="mb-3"
+      style={{ marginBottom: 12 }}
     >
       <View style={{ backgroundColor: tokens.card, padding: 16, borderRadius: tokens.radius.md }}>
         <Text style={{ color: tokens.text, fontSize: 18, fontWeight: "600", marginBottom: 4 }}>
@@ -124,7 +94,7 @@ export default function Library() {
         <Text style={{ color: tokens.textWeak, marginBottom: 8 }}>
           {item.description}
         </Text>
-        <View className="flex-row justify-between items-center">
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={{ color: tokens.textWeak, fontSize: 14 }}>
             Weekly Load: {item.load}
           </Text>
@@ -137,9 +107,9 @@ export default function Library() {
   );
 
   return (
-    <View className="flex-1" style={{ backgroundColor: tokens.bg, padding: 16 }}>
+    <View style={{ flex: 1, backgroundColor: tokens.bg, padding: 16 }}>
       {/* Header */}
-      <View className="mb-6">
+      <View style={{ marginBottom: 24 }}>
         <Text style={{ color: tokens.text, fontSize: 24, fontWeight: "600", textAlign: "center" }}>
           Plan Library
         </Text>
@@ -159,11 +129,11 @@ export default function Library() {
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View className="flex-1" style={{ backgroundColor: tokens.bg, padding: 16 }}>
+        <View style={{ flex: 1, backgroundColor: tokens.bg, padding: 16 }}>
           {selectedTemplate && (
             <>
               {/* Modal Header */}
-              <View className="flex-row items-center justify-between mb-6">
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
                 <Pressable onPress={() => setSelectedTemplate(null)}>
                   <Text style={{ color: tokens.primary, fontSize: 16 }}>Cancel</Text>
                 </Pressable>
@@ -194,7 +164,7 @@ export default function Library() {
                     key={index}
                     style={{ backgroundColor: tokens.card, padding: 12, borderRadius: tokens.radius.md, marginBottom: 8 }}
                   >
-                    <View className="flex-row justify-between items-center">
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text style={{ color: tokens.text }}>
                         {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day.dayOfWeek]}
                       </Text>
