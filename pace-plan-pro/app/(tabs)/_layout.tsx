@@ -28,48 +28,46 @@ export default function TabLayout() {
         },
       }}
     >
-                   <Tabs.Screen
-               name="plan"
-               options={{
-                 title: 'Plan',
-                 tabBarIcon: ({ color, size }) => (
-                   <CalendarDots color={color} size={size} />
-                 ),
-                 headerTitle: 'My Plan',
-               }}
-             />
-             <Tabs.Screen
-               name="library"
-               options={{
-                 title: 'Library',
-                 tabBarIcon: ({ color, size }) => (
-                   <Books color={color} size={size} />
-                 ),
-                 headerTitle: 'Plan Library',
-               }}
-             />
-             <Tabs.Screen
-               name="run-types"
-               options={{
-                 title: 'Run Types',
-                 tabBarIcon: ({ color, size }) => (
-                   <List color={color} size={size} />
-                 ),
-                 headerTitle: 'Run Types',
-               }}
-             />
-             <Tabs.Screen
-               name="settings"
-               options={{
-                 title: 'Settings',
-                 tabBarIcon: ({ color, size }) => (
-                   <Sliders color={color} size={size} />
-                 ),
-                 headerTitle: 'Settings',
-               }}
-             />
+      <Tabs.Screen
+        name="plan"
+        options={{
+          title: 'Plan',
+          tabBarIcon: ({ color, size }) => (
+            <CalendarDots color={color} size={size} />
+          ),
+          headerTitle: 'My Plan', // string is safe
+        }}
+      />
+      <Tabs.Screen
+        name="library"
+        options={{
+          title: 'Library',
+          tabBarIcon: ({ color, size }) => (
+            <Books color={color} size={size} />
+          ),
+          headerTitle: 'Plan Library',
+        }}
+      />
+      <Tabs.Screen
+        name="run-types"
+        options={{
+          title: 'Run Types',
+          tabBarIcon: ({ color, size }) => (
+            <List color={color} size={size} />
+          ),
+          headerTitle: 'Run Types',
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color, size }) => (
+            <Sliders color={color} size={size} />
+          ),
+          headerTitle: 'Settings',
+        }}
+      />
     </Tabs>
   );
 }
-
-

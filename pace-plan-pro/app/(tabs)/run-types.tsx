@@ -150,7 +150,7 @@ export default function RunTypes() {
             {item.name}
           </Text>
           <Text style={{ color: tokens.textWeak, marginBottom: 2 }}>
-            Intensity: {item.intensity}/5 ({getIntensityText(item.intensity)})
+            Intensity: {item.intensity}/5 ({String(getIntensityText(item.intensity))})
           </Text>
           <Text style={{ color: tokens.textWeak, marginBottom: 8 }}>
             Pace: {item.pace_percentage}% of threshold

@@ -11,10 +11,11 @@ type PlanTemplate = {
   weeks: number;
   load: "Low" | "Medium" | "High";
   description: string;
-  planDays: Array<{
-    dayOfWeek: number;
+  sampleWeek: Array<{
     type_name: string;
     target_distance_km?: number;
+    target_duration_min?: number;
+    tip?: string;
   }>;
 };
 
@@ -25,14 +26,14 @@ const templates: PlanTemplate[] = [
     weeks: 8,
     load: "Low",
     description: "Perfect for running your first 5K",
-    planDays: [
-      { dayOfWeek: 1, type_name: "Easy Run", target_distance_km: 2 },
-      { dayOfWeek: 2, type_name: "Rest" },
-      { dayOfWeek: 3, type_name: "Easy Run", target_distance_km: 3 },
-      { dayOfWeek: 4, type_name: "Rest" },
-      { dayOfWeek: 5, type_name: "Easy Run", target_distance_km: 2 },
-      { dayOfWeek: 6, type_name: "Long Run", target_distance_km: 4 },
-      { dayOfWeek: 0, type_name: "Rest" }
+    sampleWeek: [
+      { type_name: "Rest" },
+      { type_name: "Easy Run", target_distance_km: 2, tip: "Take it easy, focus on form" },
+      { type_name: "Rest" },
+      { type_name: "Easy Run", target_distance_km: 3, tip: "Gradually increase pace" },
+      { type_name: "Rest" },
+      { type_name: "Easy Run", target_distance_km: 2, tip: "Recovery run, keep it light" },
+      { type_name: "Long Run", target_distance_km: 4, tip: "Build endurance slowly" }
     ]
   },
   {
@@ -41,14 +42,14 @@ const templates: PlanTemplate[] = [
     weeks: 10,
     load: "Medium",
     description: "Build endurance for 10K racing",
-    planDays: [
-      { dayOfWeek: 1, type_name: "Easy Run", target_distance_km: 5 },
-      { dayOfWeek: 2, type_name: "Tempo", target_distance_km: 6 },
-      { dayOfWeek: 3, type_name: "Rest" },
-      { dayOfWeek: 4, type_name: "Intervals", target_distance_km: 5 },
-      { dayOfWeek: 5, type_name: "Easy Run", target_distance_km: 4 },
-      { dayOfWeek: 6, type_name: "Long Run", target_distance_km: 8 },
-      { dayOfWeek: 0, type_name: "Rest" }
+    sampleWeek: [
+      { type_name: "Rest" },
+      { type_name: "Easy Run", target_distance_km: 5, tip: "Maintain conversational pace" },
+      { type_name: "Tempo", target_distance_km: 6, tip: "Comfortably hard effort" },
+      { type_name: "Rest" },
+      { type_name: "Intervals", target_distance_km: 5, tip: "4x1km at 5K pace" },
+      { type_name: "Easy Run", target_distance_km: 4, tip: "Active recovery" },
+      { type_name: "Long Run", target_distance_km: 8, tip: "Build aerobic base" }
     ]
   },
   {
@@ -57,22 +58,22 @@ const templates: PlanTemplate[] = [
     weeks: 12,
     load: "High",
     description: "Train for your first or fastest 13.1 miles",
-    planDays: [
-      { dayOfWeek: 1, type_name: "Easy Run", target_distance_km: 6 },
-      { dayOfWeek: 2, type_name: "Tempo", target_distance_km: 8 },
-      { dayOfWeek: 3, type_name: "Easy Run", target_distance_km: 5 },
-      { dayOfWeek: 4, type_name: "Intervals", target_distance_km: 7 },
-      { dayOfWeek: 5, type_name: "Rest" },
-      { dayOfWeek: 6, type_name: "Long Run", target_distance_km: 12 },
-      { dayOfWeek: 0, type_name: "Rest" }
+    sampleWeek: [
+      { type_name: "Rest" },
+      { type_name: "Easy Run", target_distance_km: 6, tip: "Easy conversational pace" },
+      { type_name: "Tempo", target_distance_km: 8, tip: "Threshold pace training" },
+      { type_name: "Easy Run", target_distance_km: 5, tip: "Recovery between hard days" },
+      { type_name: "Intervals", target_distance_km: 7, tip: "5x1600m at 5K pace" },
+      { type_name: "Rest" },
+      { type_name: "Long Run", target_distance_km: 12, tip: "Practice race pace sections" }
     ]
   }
 ];
 
 async function applyTemplate(template: PlanTemplate) {
   try {
-    await createPlanFromTemplate(template.id, template.planDays);
-    console.log("Template applied successfully");
+    const planId = await createPlanFromTemplate(template);
+    console.log("Template applied successfully, plan ID:", planId);
     router.push("/(tabs)/plan");
   } catch (error) {
     console.error("Error applying template:", error);
@@ -159,18 +160,25 @@ export default function Library() {
               </Text>
               
               <ScrollView style={{ flex: 1, marginBottom: 20 }}>
-                {selectedTemplate.planDays.map((day, index) => (
+                {selectedTemplate.sampleWeek.map((day, index) => (
                   <View
                     key={index}
                     style={{ backgroundColor: tokens.card, padding: 12, borderRadius: tokens.radius.md, marginBottom: 8 }}
                   >
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ color: tokens.text }}>
-                        {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][day.dayOfWeek]}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <Text style={{ color: tokens.text, flex: 1 }}>
+                        {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][index]}
                       </Text>
-                      <Text style={{ color: tokens.textWeak }}>
-                        {day.type_name}{day.target_distance_km ? ` • ${day.target_distance_km} km` : ""}
-                      </Text>
+                      <View style={{ flex: 2, alignItems: 'flex-end' }}>
+                        <Text style={{ color: tokens.textWeak, textAlign: 'right' }}>
+                          {day.type_name}{day.target_distance_km ? ` • ${day.target_distance_km} km` : ""}
+                        </Text>
+                        {day.tip && (
+                          <Text style={{ color: tokens.textWeak, fontSize: 12, textAlign: 'right', marginTop: 2 }}>
+                            {day.tip}
+                          </Text>
+                        )}
+                      </View>
                     </View>
                   </View>
                 ))}

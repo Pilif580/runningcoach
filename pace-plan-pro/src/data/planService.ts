@@ -78,7 +78,7 @@ export async function createPlanIfNotExists(): Promise<string> {
   }
 }
 
-export async function fetchPlanDays(planId: string): Promise<PlanDay[]> {
+export async function fetchPlanDaysLegacy(planId: string): Promise<PlanDay[]> {
   if (!planId) {
     return [];
   }
@@ -119,7 +119,7 @@ async function insertDays(planId: string, days: Array<{ dayOfWeek: number; type_
   }
 }
 
-export async function createPlanFromTemplate(templateId: string, templateDays: Array<{ dayOfWeek: number; type_name: string; target_distance_km?: number }>): Promise<string> {
+export async function createPlanFromTemplateLegacy(templateId: string, templateDays: Array<{ dayOfWeek: number; type_name: string; target_distance_km?: number }>): Promise<string> {
   try {
     const athleteId = await getAthleteId();
     
@@ -152,6 +152,134 @@ export async function createPlanFromTemplate(templateId: string, templateDays: A
   } catch (error) {
     console.error('Error creating plan from template:', error);
     throw error;
+  }
+}
+
+// NEW FUNCTIONS BELOW
+
+/**
+ * Helper function to get athlete ID for development
+ * Returns a mock UUID for development purposes
+ */
+async function getAthleteIdMock(): Promise<string> {
+  return '22222222-2222-2222-2222-222222222222';
+}
+
+/**
+ * Create a plan from a template object
+ * @param template Template object with sampleWeek property
+ * @returns Promise<string> The new plan ID
+ */
+export async function createPlanFromTemplate(template: any): Promise<string> {
+  try {
+    const athleteId = await getAthleteIdMock();
+    
+    // Calculate next Monday (start of week)
+    const nextMonday = dayjs().startOf('week').add(1, 'week');
+
+    // Create new plan
+    const { data: newPlan, error: planError } = await supabase
+      .from('plans')
+      .insert({
+        athlete_id: athleteId,
+        start_date: nextMonday.toISOString()
+      })
+      .select('id')
+      .single();
+
+    if (planError) {
+      console.error('Error creating plan:', planError);
+      throw planError;
+    }
+
+    // Map template.sampleWeek into plan_days format
+    const daysToInsert = template.sampleWeek.map((day: any, index: number) => {
+      const dayDate = nextMonday.add(index, 'day');
+      return {
+        plan_id: newPlan.id,
+        date: dayDate.toISOString(),
+        type_name: day.type_name,
+        target_distance_km: day.target_distance_km || null,
+        target_duration_min: day.target_duration_min || null,
+        target_pace_sec_per_km: null, // Always null as specified
+        tip: day.tip || null
+      };
+    });
+
+    // Insert plan_days
+    const { error: daysError } = await supabase
+      .from('plan_days')
+      .insert(daysToInsert);
+
+    if (daysError) {
+      console.error('Error creating plan days:', daysError);
+      throw daysError;
+    }
+
+    return newPlan.id;
+  } catch (error) {
+    console.error('Error creating plan from template:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch plan days with extended fields
+ * @param planId The plan ID to fetch days for
+ * @returns Promise<Array> Array of plan days with all fields
+ */
+export async function fetchPlanDays(planId: string): Promise<Array<{
+  id: string;
+  date: string;
+  type_name: string;
+  target_distance_km: number | null;
+  target_duration_min: number | null;
+  target_pace_sec_per_km: number | null;
+  tip: string | null;
+}>> {
+  if (!planId) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('plan_days')
+    .select('id, date, type_name, target_distance_km, target_duration_min, target_pace_sec_per_km, tip')
+    .eq('plan_id', planId)
+    .order('date', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching plan days:', error);
+    throw error;
+  }
+
+  return data || [];
+}
+
+/**
+ * Get the most recent plan ID for the dev athlete
+ * @returns Promise<string | null> The most recent plan ID or null if none found
+ */
+export async function getMostRecentPlanId(): Promise<string | null> {
+  try {
+    const athleteId = await getAthleteIdMock();
+    
+    const { data, error } = await supabase
+      .from('plans')
+      .select('id')
+      .eq('athlete_id', athleteId)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('Error fetching most recent plan:', error);
+      return null;
+    }
+
+    return data?.id || null;
+  } catch (error) {
+    console.error('Error getting most recent plan ID:', error);
+    return null;
   }
 }
 
