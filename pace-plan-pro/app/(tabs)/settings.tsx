@@ -1,7 +1,33 @@
-import { View, Text, Pressable, ScrollView } from "react-native";
+import { View, Text, Pressable, ScrollView, Alert } from "react-native";
 import { tokens } from "../../src/theme/tokens";
+import { signOut } from "../../src/data/session";
+import { useRouter } from "expo-router";
 
 export default function Settings() {
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Sign Out", 
+          style: "destructive",
+          onPress: async () => {
+            const success = await signOut();
+            if (success) {
+              router.replace('/(auth)/login');
+            } else {
+              Alert.alert("Error", "Failed to sign out. Please try again.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const settingsOptions = [
     { title: "Profile", subtitle: "Manage your athlete profile", action: () => console.log("Profile") },
     { title: "Threshold Pace", subtitle: "Set your current threshold pace", action: () => console.log("Threshold") },
@@ -37,6 +63,24 @@ export default function Settings() {
             </View>
           </Pressable>
         ))}
+
+        {/* Sign Out Section */}
+        <View style={{ marginTop: 24, paddingTop: 16, borderTopWidth: 1, borderTopColor: tokens.card }}>
+          <Pressable
+            onPress={handleSignOut}
+            style={{
+              backgroundColor: tokens.card,
+              padding: 16,
+              borderRadius: tokens.radius.md,
+              borderWidth: 1,
+              borderColor: '#EF4444',
+            }}
+          >
+            <Text style={{ color: '#EF4444', fontSize: 16, fontWeight: "600", textAlign: 'center' }}>
+              Sign Out
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </View>
   );

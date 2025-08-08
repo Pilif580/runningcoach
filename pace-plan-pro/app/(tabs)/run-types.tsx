@@ -137,7 +137,7 @@ export default function RunTypes() {
     );
   };
 
-  const getIntensityText = (intensity: number) => {
+  const getIntensityText = (intensity: number): string => {
     const labels = ["", "Easy", "Moderate", "Tempo", "Hard", "Max"];
     return labels[intensity] || "Unknown";
   };
@@ -147,15 +147,15 @@ export default function RunTypes() {
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <View style={{ flex: 1 }}>
           <Text style={{ color: tokens.text, fontSize: 18, fontWeight: "600", marginBottom: 4 }}>
-            {item.name}
+            {item.name || 'Unknown'}
           </Text>
           <Text style={{ color: tokens.textWeak, marginBottom: 2 }}>
-            Intensity: {item.intensity}/5 ({String(getIntensityText(item.intensity))})
+            Intensity: {item.intensity}/5 ({getIntensityText(item.intensity)})
           </Text>
           <Text style={{ color: tokens.textWeak, marginBottom: 8 }}>
             Pace: {item.pace_percentage}% of threshold
           </Text>
-          {item.structure && (
+          {item.structure && typeof item.structure === 'string' && item.structure.trim() !== '' && (
             <Text style={{ color: tokens.textWeak, fontSize: 14 }}>
               Structure: {item.structure}
             </Text>

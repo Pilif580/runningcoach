@@ -8,14 +8,57 @@ export { DEV_UUID };
 
 async function getAthleteId(): Promise<string> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user?.id) {
-      return user.id;
+    // Get the current authenticated user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError || !user?.id) {
+      console.error('No authenticated user found:', authError);
+      throw new Error('Authentication required');
     }
+
+    const userId = user.id; // This is the UUID from auth.users
+
+    // Check if athlete record exists for this user
+    const { data: existingAthlete, error: fetchError } = await supabase
+      .from('athletes')
+      .select('id')
+      .eq('profile_id', userId)
+      .single();
+
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows found
+      console.error('Error fetching athlete:', fetchError);
+      throw fetchError;
+    }
+
+    // Return existing athlete ID if found
+    if (existingAthlete) {
+      return existingAthlete.id;
+    }
+
+    // Create new athlete record
+    const { data: newAthlete, error: createError } = await supabase
+      .from('athletes')
+      .insert({
+        profile_id: userId,
+        email: user.email || null,
+        created_at: new Date().toISOString()
+      })
+      .select('id')
+      .single();
+
+    if (createError) {
+      console.error('Error creating athlete:', createError);
+      throw createError;
+    }
+
+    console.log('Created new athlete profile:', newAthlete.id);
+    return newAthlete.id;
   } catch (error) {
-    console.log('No authenticated user, using dev UUID');
+    console.error('Error getting athlete ID:', error);
+    // Fallback to dev UUID for development - remove this in production
+    console.log('Falling back to dev UUID for development');
+    return DEV_UUID;
   }
-  return DEV_UUID;
 }
 
 export async function createPlanIfNotExists(): Promise<string> {
@@ -98,16 +141,13 @@ export async function fetchPlanDaysLegacy(planId: string): Promise<PlanDay[]> {
 }
 
 // Private helper function to insert plan days
-async function insertDays(planId: string, days: Array<{ dayOfWeek: number; type_name: string; target_distance_km?: number }>, startOfWeek: string) {
-  const daysToInsert = days.map((day) => {
-    const date = dayjs(startOfWeek).add(day.dayOfWeek, "day");
-    return {
-      plan_id: planId,
-      date: date.toISOString(),
-      type_name: day.type_name,
-      target_distance_km: day.target_distance_km
-    };
-  });
+async function insertDays(planId: string, days: PlanDay[], startOfWeek: string) {
+  const daysToInsert = days.map((day) => ({
+    plan_id: planId,
+    date: day.date, // Use the date directly from PlanDay
+    type_name: day.type_name,
+    target_distance_km: day.target_distance_km
+  }));
 
   const { error: daysError } = await supabase
     .from('plan_days')
@@ -145,8 +185,18 @@ export async function createPlanFromTemplateLegacy(templateId: string, templateD
       throw planError;
     }
 
+    // Convert templateDays to PlanDay format
+    const planDays: PlanDay[] = templateDays.map((day) => {
+      const date = startOfWeek.add(day.dayOfWeek, "day");
+      return {
+        date: date.toISOString(),
+        type_name: day.type_name,
+        target_distance_km: day.target_distance_km
+      };
+    });
+
     // Insert plan_days using helper
-    await insertDays(newPlan.id, templateDays, startOfWeek.toISOString());
+    await insertDays(newPlan.id, planDays, startOfWeek.toISOString());
 
     return newPlan.id;
   } catch (error) {
@@ -158,21 +208,13 @@ export async function createPlanFromTemplateLegacy(templateId: string, templateD
 // NEW FUNCTIONS BELOW
 
 /**
- * Helper function to get athlete ID for development
- * Returns a mock UUID for development purposes
- */
-async function getAthleteIdMock(): Promise<string> {
-  return '22222222-2222-2222-2222-222222222222';
-}
-
-/**
  * Create a plan from a template object
  * @param template Template object with sampleWeek property
  * @returns Promise<string> The new plan ID
  */
 export async function createPlanFromTemplate(template: any): Promise<string> {
   try {
-    const athleteId = await getAthleteIdMock();
+    const athleteId = await getAthleteId(); // Use real auth instead of mock
     
     // Calculate next Monday (start of week)
     const nextMonday = dayjs().startOf('week').add(1, 'week');
@@ -256,12 +298,12 @@ export async function fetchPlanDays(planId: string): Promise<Array<{
 }
 
 /**
- * Get the most recent plan ID for the dev athlete
+ * Get the most recent plan ID for the authenticated athlete
  * @returns Promise<string | null> The most recent plan ID or null if none found
  */
 export async function getMostRecentPlanId(): Promise<string | null> {
   try {
-    const athleteId = await getAthleteIdMock();
+    const athleteId = await getAthleteId(); // Use real auth instead of mock
     
     const { data, error } = await supabase
       .from('plans')
@@ -280,6 +322,96 @@ export async function getMostRecentPlanId(): Promise<string | null> {
   } catch (error) {
     console.error('Error getting most recent plan ID:', error);
     return null;
+  }
+}
+
+/**
+ * Get the active plan with its days and details
+ * @returns Promise<{plan: Plan, days: PlanDay[]} | null> The active plan with days or null if none found
+ */
+export async function getActivePlanWithDays(): Promise<{
+  plan: {
+    id: string;
+    athlete_id: string;
+    start_date: string;
+    coach_note: string | null;
+  };
+  days: Array<{
+    id: string;
+    date: string;
+    type_name: string;
+    target_distance_km: number | null;
+    target_duration_min: number | null;
+    target_pace_sec_per_km: number | null;
+    tip: string | null;
+  }>;
+} | null> {
+  try {
+    const athleteId = await getAthleteId(); // Use real auth instead of mock
+    
+    // Get the most recent plan
+    const { data: plan, error: planError } = await supabase
+      .from('plans')
+      .select('id, athlete_id, start_date, coach_note')
+      .eq('athlete_id', athleteId)
+      .order('start_date', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (planError && planError.code !== 'PGRST116') {
+      console.error('Error fetching active plan:', planError);
+      return null;
+    }
+
+    if (!plan) {
+      return null;
+    }
+
+    // Get all days for this plan
+    const { data: days, error: daysError } = await supabase
+      .from('plan_days')
+      .select('id, date, type_name, target_distance_km, target_duration_min, target_pace_sec_per_km, tip')
+      .eq('plan_id', plan.id)
+      .order('date', { ascending: true });
+
+    if (daysError) {
+      console.error('Error fetching plan days:', daysError);
+      return { plan, days: [] };
+    }
+
+    return {
+      plan,
+      days: days || []
+    };
+  } catch (error) {
+    console.error('Error getting active plan with days:', error);
+    return null;
+  }
+}
+
+/**
+ * Update the coach note for a plan
+ * @param planId The plan ID to update
+ * @param note The new coach note
+ * @returns Promise<boolean> Success status
+ */
+export async function updateCoachNote(planId: string, note: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('plans')
+      .update({ coach_note: note.trim() || null })
+      .eq('id', planId);
+
+    if (error) {
+      console.error('Error updating coach note:', error);
+      return false;
+    }
+
+    console.log('Coach note updated successfully');
+    return true;
+  } catch (error) {
+    console.error('Network error updating coach note:', error);
+    return false;
   }
 }
 

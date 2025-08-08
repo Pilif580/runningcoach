@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, router } from "expo-router";
 import { tokens } from "../../src/theme/tokens";
 import { createPlanFromTemplate } from "../../src/data/planService";
+import { captureEvent } from "../../src/analytics";
 import dayjs from "dayjs";
 
 type PlanTemplate = {
@@ -74,9 +75,25 @@ async function applyTemplate(template: PlanTemplate) {
   try {
     const planId = await createPlanFromTemplate(template);
     console.log("Template applied successfully, plan ID:", planId);
+    
+    // Track plan application success
+    captureEvent('plan_applied', { 
+      planId, 
+      template: template.id,
+      templateTitle: template.title,
+      weeks: template.weeks,
+      load: template.load
+    });
+    
     router.push("/(tabs)/plan");
   } catch (error) {
     console.error("Error applying template:", error);
+    
+    // Track plan application failure
+    captureEvent('plan_apply_failed', {
+      template: template.id,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 }
 

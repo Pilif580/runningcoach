@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { CalendarDots, Books, Sliders, List } from 'phosphor-react-native';
+import { View } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -32,19 +33,19 @@ export default function TabLayout() {
         name="plan"
         options={{
           title: 'Plan',
-          tabBarIcon: ({ color, size }) => (
-            <CalendarDots color={color} size={size} />
-          ),
-          headerTitle: 'My Plan', // string is safe
+          tabBarIcon: ({ color, size }) => {
+            return <CalendarDots color={color} size={size} weight="fill" />;
+          },
+          headerTitle: 'My Plan',
         }}
       />
       <Tabs.Screen
         name="library"
         options={{
           title: 'Library',
-          tabBarIcon: ({ color, size }) => (
-            <Books color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => {
+            return <Books color={color} size={size} weight="fill" />;
+          },
           headerTitle: 'Plan Library',
         }}
       />
@@ -52,9 +53,9 @@ export default function TabLayout() {
         name="run-types"
         options={{
           title: 'Run Types',
-          tabBarIcon: ({ color, size }) => (
-            <List color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => {
+            return <List color={color} size={size} weight="fill" />;
+          },
           headerTitle: 'Run Types',
         }}
       />
@@ -62,9 +63,9 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, size }) => (
-            <Sliders color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => {
+            return <Sliders color={color} size={size} weight="fill" />;
+          },
           headerTitle: 'Settings',
         }}
       />
