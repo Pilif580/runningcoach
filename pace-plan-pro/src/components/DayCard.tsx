@@ -1,6 +1,8 @@
 import { View, Text } from "react-native";
 import dayjs from "dayjs";
 
+
+
 export default function DayCard({ date, type, km, completed }: {date:string; type:string; km?:number; completed?:boolean}) {
   return (
     <View className="bg-card rounded-xl p-4 mb-3 border border-[#232326]">
