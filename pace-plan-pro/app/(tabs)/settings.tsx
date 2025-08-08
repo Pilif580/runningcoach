@@ -1,10 +1,37 @@
 import { View, Text, Pressable, ScrollView, Alert } from "react-native";
 import { tokens } from "../../src/theme/tokens";
 import { signOut } from "../../src/data/session";
+import { initializeNotifications, areNotificationsEnabled } from "../../src/notify";
 import { useRouter } from "expo-router";
+import { useState, useEffect } from "react";
 
 export default function Settings() {
   const router = useRouter();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  useEffect(() => {
+    checkNotificationStatus();
+  }, []);
+
+  const checkNotificationStatus = async () => {
+    const enabled = await areNotificationsEnabled();
+    setNotificationsEnabled(enabled);
+  };
+
+  const handleEnableNotifications = async () => {
+    try {
+      const token = await initializeNotifications();
+      if (token) {
+        setNotificationsEnabled(true);
+        Alert.alert("Success", "Push notifications enabled successfully!");
+      } else {
+        Alert.alert("Failed", "Could not enable push notifications. Please check your device settings.");
+      }
+    } catch (error) {
+      console.error('Error enabling notifications:', error);
+      Alert.alert("Error", "Failed to enable notifications. Please try again.");
+    }
+  };
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -32,6 +59,11 @@ export default function Settings() {
     { title: "Profile", subtitle: "Manage your athlete profile", action: () => console.log("Profile") },
     { title: "Threshold Pace", subtitle: "Set your current threshold pace", action: () => console.log("Threshold") },
     { title: "Training Preferences", subtitle: "Days, times, and preferences", action: () => console.log("Preferences") },
+    { 
+      title: "Push Notifications", 
+      subtitle: notificationsEnabled ? "Enabled - Get training reminders" : "Disabled - Enable to get training reminders", 
+      action: notificationsEnabled ? () => Alert.alert("Notifications", "Notifications are already enabled! You can manage them in your device settings.") : handleEnableNotifications
+    },
     { title: "Data & Privacy", subtitle: "Manage your data and privacy settings", action: () => console.log("Privacy") },
     { title: "About", subtitle: "App version and information", action: () => console.log("About") },
   ];
@@ -59,7 +91,22 @@ export default function Settings() {
                   {option.subtitle}
                 </Text>
               </View>
-              <Text style={{ color: tokens.primary, fontSize: 16 }}>→</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {option.title === "Push Notifications" && (
+                  <View style={{ 
+                    backgroundColor: notificationsEnabled ? tokens.primary : tokens.textWeak, 
+                    borderRadius: 12, 
+                    paddingHorizontal: 8, 
+                    paddingVertical: 2, 
+                    marginRight: 8 
+                  }}>
+                    <Text style={{ color: notificationsEnabled ? '#000' : '#fff', fontSize: 12, fontWeight: '500' }}>
+                      {notificationsEnabled ? 'ON' : 'OFF'}
+                    </Text>
+                  </View>
+                )}
+                <Text style={{ color: tokens.primary, fontSize: 16 }}>→</Text>
+              </View>
             </View>
           </Pressable>
         ))}

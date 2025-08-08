@@ -4,10 +4,12 @@ import { tokens } from "../../../src/theme/tokens";
 import DayCard from "../../../src/components/DayCard";
 import PlanHeader from "../../../src/components/PlanHeader";
 import WeeklyRecapCard from "../../../src/components/WeeklyRecapCard";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useLocalSearchParams } from "expo-router";
 import { getActivePlanWithDays } from "../../../src/data/planService";
 import { loadCompletionStatuses, syncQueue } from "../../../src/data/completionsService";
 import { useCallback } from "react";
+import dayjs from "dayjs";
 
 type Plan = {
   id: string;
@@ -27,6 +29,8 @@ type PlanDay = {
 };
 
 export default function Plan() {
+  const { scrollToDate } = useLocalSearchParams<{ scrollToDate?: string }>();
+  const flatListRef = useRef<FlatList<PlanDay>>(null);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [days, setDays] = useState<PlanDay[]>([]);
   const [completionByDay, setCompletionByDay] = useState<Record<string, boolean>>({});
@@ -35,6 +39,46 @@ export default function Plan() {
   useEffect(() => {
     loadPlanData();
   }, []);
+
+  // Handle deep link scrolling
+  useEffect(() => {
+    if (scrollToDate && days.length > 0) {
+      scrollToDateHandler(scrollToDate);
+    }
+  }, [scrollToDate, days]);
+
+  const scrollToDateHandler = (targetDate: string) => {
+    try {
+      console.log('Attempting to scroll to date:', targetDate);
+      
+      // Find the index of the day with the target date
+      const targetIndex = days.findIndex(day => {
+        const dayDate = dayjs(day.date).format('YYYY-MM-DD');
+        return dayDate === targetDate;
+      });
+
+      if (targetIndex !== -1) {
+        console.log('Found target date at index:', targetIndex);
+        
+        // Add a small delay to ensure FlatList is fully rendered
+        setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: targetIndex,
+            animated: true,
+            viewPosition: 0.2, // Position item 20% from the top of the visible area
+          });
+        }, 300);
+      } else {
+        console.warn('Target date not found in plan:', targetDate);
+        // Scroll to top if date not found
+        setTimeout(() => {
+          flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+        }, 300);
+      }
+    } catch (error) {
+      console.error('Error scrolling to date:', error);
+    }
+  };
 
   const loadPlanData = async () => {
     try {
@@ -127,6 +171,7 @@ export default function Plan() {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={days}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ padding: 16 }}
@@ -152,6 +197,13 @@ export default function Plan() {
             />
           )}
           showsVerticalScrollIndicator={false}
+          onScrollToIndexFailed={(info) => {
+            // Handle scroll failure gracefully
+            console.warn('Scroll to index failed:', info);
+            setTimeout(() => {
+              flatListRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+            }, 100);
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

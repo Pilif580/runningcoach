@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import dayjs from 'dayjs';
 import { generateWeek, type PlanDay } from '../logic/generatePlan';
+import { scheduleWeekRunReminders, cancelAllScheduledNotifications } from '../notify';
 import { DEV_UUID } from '../config';
 
 // Re-export DEV_UUID for backward compatibility
@@ -114,6 +115,9 @@ export async function createPlanIfNotExists(): Promise<string> {
     // Insert plan_days using helper
     await insertDays(newPlan.id, week, startOfWeek);
 
+    // Schedule notifications for training days
+    await scheduleRunNotificationsForWeek(week);
+
     return newPlan.id;
   } catch (error) {
     console.error('Error checking existing plan:', error);
@@ -212,6 +216,30 @@ export async function createPlanFromTemplateLegacy(templateId: string, templateD
  * @param template Template object with sampleWeek property
  * @returns Promise<string> The new plan ID
  */
+// Private helper function to schedule notifications for training days in a week
+async function scheduleRunNotificationsForWeek(weekDays: PlanDay[]): Promise<void> {
+  try {
+    // Cancel any existing scheduled notifications first
+    await cancelAllScheduledNotifications();
+
+    // Filter only training days (not Rest days)
+    const trainingDays = weekDays
+      .filter(day => day.type_name !== 'Rest')
+      .map(day => ({
+        date: dayjs(day.date).format('YYYY-MM-DD'),
+        title: `${day.type_name}${day.target_distance_km ? ` - ${day.target_distance_km}km` : ''}`
+      }));
+
+    if (trainingDays.length > 0) {
+      await scheduleWeekRunReminders(trainingDays);
+      console.log(`Scheduled ${trainingDays.length} run reminders for the week`);
+    }
+  } catch (error) {
+    console.error('Error scheduling run notifications:', error);
+    // Don't throw - notifications are optional, plan creation should still succeed
+  }
+}
+
 export async function createPlanFromTemplate(template: any): Promise<string> {
   try {
     const athleteId = await getAthleteId(); // Use real auth instead of mock
@@ -256,6 +284,27 @@ export async function createPlanFromTemplate(template: any): Promise<string> {
     if (daysError) {
       console.error('Error creating plan days:', daysError);
       throw daysError;
+    }
+
+    // Schedule notifications for training days
+    const trainingDays = template.sampleWeek
+      .map((day: any, index: number) => {
+        const dayDate = nextMonday.add(index, 'day');
+        return {
+          date: dayDate.format('YYYY-MM-DD'),
+          title: `${day.type_name}${day.target_distance_km ? ` - ${day.target_distance_km}km` : ''}`
+        };
+      })
+      .filter((day: any) => !day.title.startsWith('Rest'));
+
+    if (trainingDays.length > 0) {
+      try {
+        await cancelAllScheduledNotifications();
+        await scheduleWeekRunReminders(trainingDays);
+        console.log(`Scheduled ${trainingDays.length} run reminders for template plan`);
+      } catch (error) {
+        console.error('Error scheduling notifications for template plan:', error);
+      }
     }
 
     return newPlan.id;

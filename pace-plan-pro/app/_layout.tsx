@@ -4,12 +4,15 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter, useSegments } from 'expo-router';
+import * as Linking from 'expo-linking';
 import 'react-native-reanimated';
 import { initializeDatabase } from '../src/data/db';
 import { useSync } from '../src/logic/useSync';
 import { OfflineBanner } from '../src/components/OfflineBanner';
 import { getSession, onAuthChange } from '../src/data/session';
 import { posthog, identifyUser, resetAnalytics } from '../src/analytics';
+import { initializeNotifications } from '../src/notify';
+import { processDeepLink, getInitialURL } from '../src/deeplink';
 import type { Session } from '@supabase/supabase-js';
 
 export default function RootLayout() {
@@ -36,6 +39,13 @@ export default function RootLayout() {
       // Identify user if authenticated
       if (initialSession?.user) {
         identifyUser(initialSession.user.id, initialSession.user.email);
+        
+        // Initialize notifications for already authenticated user
+        initializeNotifications().then(token => {
+          if (token) {
+            console.log('Push notifications initialized for existing user');
+          }
+        });
       }
     });
 
@@ -48,6 +58,13 @@ export default function RootLayout() {
       if (event === 'SIGNED_IN' && newSession?.user) {
         identifyUser(newSession.user.id, newSession.user.email);
         posthog.capture('user_signed_in');
+        
+        // Initialize notifications for authenticated user
+        initializeNotifications().then(token => {
+          if (token) {
+            console.log('Push notifications initialized for user');
+          }
+        });
       } else if (event === 'SIGNED_OUT') {
         posthog.capture('user_signed_out');
         resetAnalytics();
@@ -56,6 +73,48 @@ export default function RootLayout() {
 
     return unsubscribe;
   }, []);
+
+  // Setup deep linking
+  useEffect(() => {
+    // Handle deep links when app is already running
+    const handleDeepLink = (url: string) => {
+      console.log('Received deep link:', url);
+      
+      // Only process deep links if user is authenticated
+      if (session) {
+        processDeepLink(url);
+      } else {
+        console.log('User not authenticated, ignoring deep link');
+      }
+    };
+
+    // Listen for incoming links
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    // Handle initial URL if app was opened via deep link
+    const handleInitialURL = async () => {
+      try {
+        const initialURL = await getInitialURL();
+        if (initialURL && session) {
+          console.log('Processing initial deep link:', initialURL);
+          processDeepLink(initialURL);
+        }
+      } catch (error) {
+        console.error('Error handling initial URL:', error);
+      }
+    };
+
+    // Only handle initial URL after authentication is determined
+    if (!isLoading && session) {
+      handleInitialURL();
+    }
+
+    return () => {
+      subscription.remove();
+    };
+  }, [session, isLoading]);
 
   useEffect(() => {
     if (isLoading) return; // Don't redirect while loading

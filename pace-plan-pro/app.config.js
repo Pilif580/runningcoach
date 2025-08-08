@@ -29,11 +29,13 @@ export default {
       "expo-router",
       "expo-sqlite"
     ],
-    scheme: "pace-plan-pro",
+    scheme: "paceplanpro",
     jsxRuntime: "automatic",
     extra: {
       SUPABASE_URL: process.env.SUPABASE_URL,
       SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
-    }
+    },
+    owner: "filipilip", // Your Expo username
+    projectId: "filipilip/pace-plan-pro" // Format: username/slug
   }
 };
